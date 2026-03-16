@@ -4,6 +4,27 @@ function register(app) {
   app.command("/add-task", async ({ ack, body, client }) => {
     await ack();
 
+    // Open a loading modal IMMEDIATELY to use trigger_id before it expires
+    const loadingModal = await client.views.open({
+      trigger_id: body.trigger_id,
+      view: {
+        type: "modal",
+        callback_id: "task_modal_loading",
+        title: { type: "plain_text", text: "Add Task to Jira" },
+        close: { type: "plain_text", text: "Cancel" },
+        blocks: [
+          {
+            type: "section",
+            text: {
+              type: "mrkdwn",
+              text: ":hourglass_flowing_sand: Loading epics from Jira...",
+            },
+          },
+        ],
+      },
+    });
+
+    // Now fetch epics (can take a while on cold start)
     let epics;
     try {
       epics = await fetchEpics();
@@ -17,8 +38,9 @@ function register(app) {
       value: e.key,
     }));
 
-    await client.views.open({
-      trigger_id: body.trigger_id,
+    // Update the modal with the full form
+    await client.views.update({
+      view_id: loadingModal.view.id,
       view: {
         type: "modal",
         callback_id: "task_modal_submit",
