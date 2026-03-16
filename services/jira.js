@@ -35,9 +35,14 @@ async function fetchEpics() {
   }
 
   const jql = `project = ${JIRA_PROJECT_KEY} AND issuetype = Epic ORDER BY summary ASC`;
-  const data = await jiraFetch(
-    `/search?jql=${encodeURIComponent(jql)}&fields=summary&maxResults=100`
-  );
+  const data = await jiraFetch("/search/jql", {
+    method: "POST",
+    body: JSON.stringify({
+      jql,
+      fields: ["summary"],
+      maxResults: 100,
+    }),
+  });
 
   const epics = data.issues.map((issue) => ({
     key: issue.key,
