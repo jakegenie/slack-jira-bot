@@ -6,10 +6,6 @@ const JIRA_PROJECT_KEY = process.env.JIRA_PROJECT_KEY || "KAN";
 const authHeader =
   "Basic " + Buffer.from(`${JIRA_EMAIL}:${JIRA_API_TOKEN}`).toString("base64");
 
-// Cache epics for 5 minutes
-let epicCache = { data: null, timestamp: 0 };
-const CACHE_TTL = 5 * 60 * 1000;
-
 async function jiraFetch(path, options = {}) {
   const res = await fetch(`${JIRA_BASE_URL}/rest/api/3${path}`, {
     ...options,
@@ -29,11 +25,6 @@ async function jiraFetch(path, options = {}) {
 }
 
 async function fetchEpics() {
-  const now = Date.now();
-  if (epicCache.data && now - epicCache.timestamp < CACHE_TTL) {
-    return epicCache.data;
-  }
-
   const jql = `project = ${JIRA_PROJECT_KEY} AND issuetype = Epic ORDER BY summary ASC`;
   const data = await jiraFetch("/search/jql", {
     method: "POST",
@@ -44,13 +35,10 @@ async function fetchEpics() {
     }),
   });
 
-  const epics = data.issues.map((issue) => ({
+  return data.issues.map((issue) => ({
     key: issue.key,
     summary: issue.fields.summary,
   }));
-
-  epicCache = { data: epics, timestamp: now };
-  return epics;
 }
 
 async function createIssue({ type, epicKey, summary, description }) {
